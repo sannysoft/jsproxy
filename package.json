@@ -1,0 +1,131 @@
+{
+  "name": "jsproxy",
+  "version": "1.0.0",
+  "description": "",
+  "keywords": [],
+  "main": "dist/jsproxy.umd.js",
+  "module": "dist/jsproxy.es5.js",
+  "typings": "dist/types/jsproxy.d.ts",
+  "files": [
+    "dist"
+  ],
+  "author": "sannysoft <sannysoft@gmail.com>",
+  "repository": {
+    "type": "git",
+    "url": ""
+  },
+  "license": "MIT",
+  "engines": {
+    "node": ">=6.0.0"
+  },
+  "scripts": {
+    "lint": "eslint --cache --ext .js,.jsx,.ts,.tsx --format=pretty ./",
+    "prebuild": "rimraf dist",
+    "build": "tsc --module commonjs",
+    "start": "rollup -c rollup.config.ts -w",
+    "test": "jest --coverage",
+    "test:watch": "jest --coverage --watch",
+    "test:prod": "npm run lint && npm run test -- --no-cache",
+    "precommit": "lint-staged",
+    "travis-deploy-once": "travis-deploy-once"
+  },
+  "husky": {
+    "hooks": {
+      "pre-commit": "lint-staged"
+    }
+  },
+  "lint-staged": {
+    "{src,test}/**/*.ts": [
+      "prettier --write",
+      "git add"
+    ]
+  },
+  "jest": {
+    "transform": {
+      ".(ts|tsx)": "ts-jest"
+    },
+    "testEnvironment": "node",
+    "testRegex": "(/__tests__/.*|\\.(test|spec))\\.(ts|tsx|js)$",
+    "moduleFileExtensions": [
+      "ts",
+      "tsx",
+      "js"
+    ],
+    "coveragePathIgnorePatterns": [
+      "/node_modules/",
+      "/test/"
+    ],
+    "coverageThreshold": {
+      "global": {
+        "branches": 90,
+        "functions": 95,
+        "lines": 95,
+        "statements": 95
+      }
+    },
+    "collectCoverageFrom": [
+      "src/*.{js,ts}"
+    ]
+  },
+  "commitlint": {
+    "extends": [
+      "@commitlint/config-conventional"
+    ]
+  },
+  "devDependencies": {
+    "@commitlint/cli": "^7.1.2",
+    "@commitlint/config-conventional": "^7.1.2",
+    "@types/jest": "^23.3.2",
+    "@types/mkdirp": "^1.0.0",
+    "@types/node": "^10.11.0",
+    "@typescript-eslint/eslint-plugin": "^1.6.0",
+    "@typescript-eslint/parser": "^2.31.0",
+    "coveralls": "^3.0.2",
+    "cross-env": "^5.2.0",
+    "eslint": "^5.16.0",
+    "eslint-config-airbnb-typescript": "^1.1.0",
+    "eslint-config-prettier": "^4.1.0",
+    "eslint-formatter-pretty": "^2.1.1",
+    "eslint-plugin-eslint-comments": "^3.1.1",
+    "eslint-plugin-import": "^2.16.0",
+    "eslint-plugin-jest": "^22.4.1",
+    "eslint-plugin-jsx-a11y": "^6.2.0",
+    "eslint-plugin-promise": "^4.1.1",
+    "eslint-plugin-react": "^7.12.4",
+    "eslint-plugin-unicorn": "^8.0.1",
+    "husky": "^1.0.1",
+    "import-sort-cli": "^6.0.0",
+    "import-sort-parser-babylon": "^6.0.0",
+    "import-sort-parser-typescript": "^6.0.0",
+    "import-sort-style-module": "^6.0.0",
+    "jest": "^23.6.0",
+    "jest-config": "^23.6.0",
+    "lint-staged": "^8.0.0",
+    "prettier": "^1.14.3",
+    "rimraf": "^2.6.2",
+    "rollup": "^0.67.0",
+    "rollup-plugin-commonjs": "^9.1.8",
+    "rollup-plugin-json": "^3.1.0",
+    "rollup-plugin-node-resolve": "^3.4.0",
+    "rollup-plugin-sourcemaps": "^0.4.2",
+    "rollup-plugin-typescript2": "^0.18.0",
+    "semantic-release": "^15.9.16",
+    "shelljs": "^0.8.3",
+    "ts-jest": "^23.10.2",
+    "ts-node": "^7.0.1",
+    "tslint": "^5.11.0",
+    "tslint-config-prettier": "^1.15.0",
+    "tslint-config-standard": "^8.0.1",
+    "typedoc": "^0.12.0",
+    "typescript": "^3.0.3"
+  },
+  "dependencies": {
+    "@types/node-forge": "^0.9.3",
+    "agentkeepalive": "^4.1.2",
+    "lodash": "^4.17.15",
+    "mkdirp": "^1.0.4",
+    "node-forge": "^0.9.1",
+    "tunnel-agent": "^0.6.0",
+    "colors": "^1.4.0"
+  }
+}
