@@ -1,19 +1,19 @@
-import fs from 'fs';
-import forge from 'node-forge';
-import colors from 'colors';
+import * as fs from 'fs';
+import * as forge from 'node-forge';
+import * as colors from 'colors';
 import { FakeServersCenter } from '../tls/fake-servers-center';
 import { ProxyConfig } from '../types/proxy-config';
 import { UpgradeHandlerFn } from '../types/functions/upgrade-handler-fn';
 import { RequestHandlerFn } from '../types/functions/request-handler-fn';
-import { log, logError } from '../common/logger';
+import { log } from '../common/logger';
 
 export function createFakeServerCenter(
   proxyConfig: ProxyConfig,
   requestHandler: RequestHandlerFn,
   upgradeHandler: UpgradeHandlerFn,
 ): FakeServersCenter {
-  let caCert;
-  let caKey;
+  let caCert: forge.pki.Certificate;
+  let caKey: forge.pki.PrivateKey;
 
   try {
     fs.accessSync(proxyConfig.caCertPath, fs.constants.F_OK);
@@ -24,9 +24,8 @@ export function createFakeServerCenter(
     caKey = forge.pki.privateKeyFromPem(caKeyPem);
   } catch (error) {
     log(`Can not find \`CA certificate\` or \`CA key\`.`, colors.red);
-    logError(error);
-    // eslint-disable-next-line unicorn/no-process-exit
-    process.exit(1);
+
+    throw error;
   }
 
   return new FakeServersCenter(

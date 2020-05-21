@@ -1,6 +1,6 @@
-import https from 'https';
-import forge from 'node-forge';
-import tls from 'tls';
+import * as https from 'https';
+import * as forge from 'node-forge';
+import * as tls from 'tls';
 import TlsUtils from './tls-utils';
 import CertAndKeyContainer from './cert-and-key-container';
 import { CaPair } from '../types/ca-pair';
@@ -43,7 +43,7 @@ export class FakeServersCenter {
         // eslint-disable-next-line no-unused-expressions
         delServerObj?.serverObj?.server.close();
       } catch (error) {
-        console.log(error);
+        logError(error);
       }
     }
     this.queue.push(serverPromiseObj);
@@ -113,8 +113,7 @@ export class FakeServersCenter {
     // eslint-disable-next-line no-param-reassign
     serverPromiseObj.serverObj = serverObj;
 
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    return new Promise<ServerObject>((resolve, reject) => {
+    return new Promise<ServerObject>(resolve => {
       fakeServer.listen(0, () => {
         const address = fakeServer.address();
         // @ts-ignore

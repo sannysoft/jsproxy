@@ -1,6 +1,5 @@
-import colors from 'colors';
-import url from 'url';
-import net from 'net';
+import * as url from 'url';
+import * as net from 'net';
 import { IncomingMessage } from 'http';
 import stream from 'stream';
 import { SslConnectInterceptorFn } from '../types/functions/ssl-connect-interceptor';
@@ -58,14 +57,14 @@ function connect(
 ): ExtendedNetSocket {
   // tunneling https
   const proxySocket: ExtendedNetSocket = net.connect(port, hostname, () => {
-    cltSocket.write('HTTP/1.1 200 Connection Established\r\nProxy-agent: jsproxy\r\n\r\n');
+    cltSocket.write('HTTP/1.1 200 Connection Established\r\n\r\n');
     proxySocket.write(head);
     proxySocket.pipe(cltSocket);
     cltSocket.pipe(proxySocket);
   });
 
   proxySocket.on('error', (e: Error) => {
-    console.log(colors.red(e.message));
+    logError(e.message);
   });
 
   proxySocket.on('ready', () => {

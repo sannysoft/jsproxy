@@ -1,11 +1,12 @@
-import forge from 'node-forge';
-import mkdirp from 'mkdirp';
+import * as forge from 'node-forge';
+import * as mkdirp from 'mkdirp';
 import * as _ from 'lodash';
-import path from 'path';
-import fs from 'fs';
+import * as path from 'path';
+import * as fs from 'fs';
 import { CaConfig } from '../types/ca-config';
 import { CaPair } from '../types/ca-pair';
 import { caConfig } from '../common/ca-config';
+import { PeerCertificate } from 'tls';
 
 export default class TlsUtils {
   public static createCA(CN: string): CaPair {
@@ -24,23 +25,23 @@ export default class TlsUtils {
       },
       {
         name: 'countryName',
-        value: 'CN',
+        value: 'RU',
       },
       {
         shortName: 'ST',
-        value: 'GuangDong',
+        value: 'Moscow',
       },
       {
         name: 'localityName',
-        value: 'ShenZhen',
+        value: 'Moscow',
       },
       {
         name: 'organizationName',
-        value: 'node-mitmproxy',
+        value: 'jsproxy',
       },
       {
         shortName: 'OU',
-        value: 'https://github.com/wuchangming/node-mitmproxy',
+        value: 'https://github.com/sannysoft/jsproxy',
       },
     ];
     cert.setSubject(attrs);
@@ -71,10 +72,8 @@ export default class TlsUtils {
   }
 
   public static covertNodeCertToForgeCert(
-    originCertificate: forge.pki.Certificate,
+    originCertificate: PeerCertificate,
   ): forge.pki.Certificate {
-    // TODO: Check
-    // @ts-ignore
     const obj = forge.asn1.fromDer(originCertificate.raw.toString('binary'));
     return forge.pki.certificateFromAsn1(obj);
   }
@@ -96,23 +95,23 @@ export default class TlsUtils {
       },
       {
         name: 'countryName',
-        value: 'CN',
+        value: 'RU',
       },
       {
         shortName: 'ST',
-        value: 'GuangDong',
+        value: 'Moscow',
       },
       {
         name: 'localityName',
-        value: 'ShengZhen',
+        value: 'Moscow',
       },
       {
         name: 'organizationName',
-        value: 'node-mitmproxy',
+        value: 'jsproxy',
       },
       {
         shortName: 'OU',
-        value: 'https://github.com/wuchangming/node-mitmproxy',
+        value: 'https://github.com/sannysoft/jsproxy',
       },
     ];
 
@@ -172,30 +171,37 @@ export default class TlsUtils {
 
   public static createFakeCertificateByCA(
     caPair: CaPair,
-    originCertificate: forge.pki.Certificate,
+    originCertificate: PeerCertificate,
   ): CaPair {
-    const certificate = TlsUtils.covertNodeCertToForgeCert(originCertificate);
+    // const certificate = TlsUtils.covertNodeCertToForgeCert(originCertificate);
 
     const keys = forge.pki.rsa.generateKeyPair(2046);
     const cert = forge.pki.createCertificate();
     cert.publicKey = keys.publicKey;
 
-    cert.serialNumber = certificate.serialNumber;
+    cert.serialNumber = originCertificate.serialNumber;
     cert.validity.notBefore = new Date();
     cert.validity.notBefore.setFullYear(cert.validity.notBefore.getFullYear() - 1);
     cert.validity.notAfter = new Date();
     cert.validity.notAfter.setFullYear(cert.validity.notAfter.getFullYear() + 1);
 
-    cert.setSubject(certificate.subject.attributes);
+    const attrs: forge.pki.CertificateField[] = [];
+    Object.entries(originCertificate.subject).forEach(([name, value]) => {
+      attrs.push({
+        shortName: name,
+        value: value,
+      });
+    });
+
+    cert.setSubject(attrs);
     cert.setIssuer(caPair.cert.subject.attributes);
 
-    // @ts-ignore
-    if (certificate.subjectaltname)
-      // @ts-ignore
-      cert.subjectaltname = certificate.subjectaltname;
-
-    const subjectAltName = _.find(certificate.extensions, {
-      name: 'subjectAltName',
+    const subjectAltNames = originCertificate.subjectaltname.split(', ').map(name => {
+      return {
+        // 2 is DNS type
+        type: 2,
+        value: name.replace('DNS:', '').trim(),
+      };
     });
 
     cert.setExtensions([
@@ -219,7 +225,7 @@ export default class TlsUtils {
       },
       {
         name: 'subjectAltName',
-        altNames: subjectAltName.altNames,
+        altNames: subjectAltNames,
       },
       {
         name: 'subjectKeyIdentifier',

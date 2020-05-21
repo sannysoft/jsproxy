@@ -10,8 +10,8 @@ export function createUpgradeHandler(): UpgradeHandlerFn {
     const clientOptions = CommonUtils.getOptionsFromRequest(req, ssl);
     const proxyReq = (ssl ? https : http).request(clientOptions);
 
-    proxyReq.on('error', e => {
-      console.error(e);
+    proxyReq.on('error', error => {
+      logError(error);
     });
 
     proxyReq.on('response', res => {

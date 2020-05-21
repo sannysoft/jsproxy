@@ -1,19 +1,19 @@
-import url from 'url';
+import * as url from 'url';
 // @ts-ignore
-import tunnelAgent from 'tunnel-agent';
+import * as tunnelAgent from 'tunnel-agent';
 import * as http from 'http';
-import { ProxyHttpsAgent } from './proxy-https-agent';
-import { ProxyHttpAgent } from './proxy-http-agent';
+import * as AgentKeepAlive from 'agentkeepalive';
 import { ExternalProxyFn } from '../types/functions/external-proxy-fn';
 import { RequestOptions } from '../types/request-options';
 import { logError } from './logger';
+import { ExternalProxyConfig, ExternalProxyHelper } from '../types/external-proxy-config';
 
-const httpsAgent = new ProxyHttpsAgent({
+const httpsAgent = new AgentKeepAlive.HttpsAgent({
   keepAlive: true,
   timeout: 60000,
 });
 
-const httpAgent = new ProxyHttpAgent({
+const httpAgent = new AgentKeepAlive({
   keepAlive: true,
   timeout: 60000,
 });
@@ -32,19 +32,19 @@ export class CommonUtils {
   public static getOptionsFromRequest(
     req: http.IncomingMessage,
     ssl: boolean,
-    externalProxy: string | ExternalProxyFn | undefined = undefined,
+    externalProxy: ExternalProxyConfig | ExternalProxyFn | undefined,
   ): RequestOptions {
     const urlObject = url.parse(req?.url ?? makeErr('No URL specified'));
     const defaultPort = ssl ? 443 : 80;
     const protocol = ssl ? 'https:' : 'http:';
     const headers = Object.assign({}, req.headers);
 
-    const externalProxyUrl = this.getExternalProxyUrl(externalProxy, req, ssl);
+    const externalProxyHelper = this.getExternalProxyHelper(externalProxy, req, ssl);
 
     delete headers['proxy-connection'];
 
     let agent: any = false;
-    if (!externalProxyUrl) {
+    if (!externalProxyHelper) {
       // keepAlive
       if (headers.connection !== 'close') {
         if (protocol === 'https:') {
@@ -55,7 +55,7 @@ export class CommonUtils {
         headers.connection = 'keep-alive';
       }
     } else {
-      agent = CommonUtils.getTunnelAgent(protocol === 'https:', externalProxyUrl);
+      agent = CommonUtils.getTunnelAgent(protocol === 'https:', externalProxyHelper);
     }
 
     const requestHost: string = req.headers?.host ?? makeErr('No request hostname set');
@@ -72,10 +72,10 @@ export class CommonUtils {
 
     if (
       protocol === 'http:' &&
-      externalProxyUrl &&
-      url.parse(externalProxyUrl).protocol === 'http:'
+      externalProxyHelper &&
+      externalProxyHelper.getProtocol() === 'http:'
     ) {
-      const externalURL = url.parse(externalProxyUrl);
+      const externalURL = externalProxyHelper.getUrlObject();
       options.hostname = externalURL.hostname ?? makeErr('No external proxy hostname');
       options.port = Number(externalURL.port ?? makeErr('No external proxy port'));
 
@@ -99,30 +99,32 @@ export class CommonUtils {
     return options;
   }
 
-  private static getExternalProxyUrl(
-    externalProxy: string | ExternalProxyFn | undefined,
+  private static getExternalProxyHelper(
+    externalProxy: ExternalProxyConfig | ExternalProxyFn | undefined,
     req: http.IncomingMessage,
     ssl: boolean,
-  ): string | undefined {
-    let externalProxyUrl: string | undefined;
+  ): ExternalProxyHelper | undefined {
+    let externalProxyConfig: ExternalProxyConfig | undefined;
 
     if (externalProxy) {
       if (typeof externalProxy === 'string') {
-        externalProxyUrl = externalProxy;
+        externalProxyConfig = externalProxy;
       } else if (typeof externalProxy === 'function') {
         try {
-          externalProxyUrl = externalProxy(req, ssl);
+          externalProxyConfig = externalProxy(req, ssl);
         } catch (error) {
           logError(error);
         }
       }
     }
 
-    return externalProxyUrl;
+    if (externalProxyConfig) return new ExternalProxyHelper(externalProxyConfig);
+
+    return undefined;
   }
 
-  private static getTunnelAgent(isSsl: boolean, externalProxyUrl: string): any {
-    const urlObject = url.parse(externalProxyUrl);
+  private static getTunnelAgent(isSsl: boolean, externalProxyHelper: ExternalProxyHelper): any {
+    const urlObject = externalProxyHelper.getUrlObject();
     const externalProxyProtocol = urlObject.protocol || 'http:';
     const port: number | null = Number(
       urlObject?.port ?? (externalProxyProtocol === 'http:' ? 80 : 443),
@@ -130,46 +132,39 @@ export class CommonUtils {
 
     const hostname = urlObject.hostname || 'localhost';
 
+    const tunnelConfig = {
+      proxy: {
+        host: hostname,
+        port: port,
+      },
+    };
+
+    const auth = externalProxyHelper.getLoginAndPassword();
+    if (auth) {
+      // @ts-ignore
+      tunnelConfig.proxy.proxyAuth = auth;
+    }
+
     if (isSsl) {
       if (externalProxyProtocol === 'http:') {
         if (!httpsOverHttpAgent) {
-          httpsOverHttpAgent = tunnelAgent.httpsOverHttp({
-            proxy: {
-              host: hostname,
-              port: port,
-            },
-          });
+          httpsOverHttpAgent = tunnelAgent.httpsOverHttp(tunnelConfig);
         }
         return httpsOverHttpAgent;
       }
       if (!httpsOverHttpsAgent) {
-        httpsOverHttpsAgent = tunnelAgent.httpsOverHttps({
-          proxy: {
-            host: hostname,
-            port: port,
-          },
-        });
+        httpsOverHttpsAgent = tunnelAgent.httpsOverHttps(tunnelConfig);
       }
       return httpsOverHttpsAgent;
     }
     if (externalProxyProtocol === 'http:') {
       // if (!httpOverHttpAgent) {
-      //     httpOverHttpAgent = tunnelAgent.httpOverHttp({
-      //         proxy: {
-      //             host: hostname,
-      //             port: port
-      //         }
-      //     });
+      //     httpOverHttpAgent = tunnelAgent.httpOverHttp(tunnelConfig);
       // }
       return false;
     }
     if (!httpOverHttpsAgent) {
-      httpOverHttpsAgent = tunnelAgent.httpOverHttps({
-        proxy: {
-          host: hostname,
-          port: port,
-        },
-      });
+      httpOverHttpsAgent = tunnelAgent.httpOverHttps(tunnelConfig);
     }
     return httpOverHttpsAgent;
   }

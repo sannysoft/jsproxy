@@ -2,6 +2,7 @@ import { SslConnectInterceptorFn } from './functions/ssl-connect-interceptor';
 import { RequestInterceptorFn } from './functions/request-interceptor-fn';
 import { ResponseInterceptorFn } from './functions/response-interceptor-fn';
 import { ExternalProxyFn } from './functions/external-proxy-fn';
+import { ExternalProxyConfig } from './external-proxy-config';
 
 export interface ProxyConfig {
   port: number;
@@ -12,9 +13,8 @@ export interface ProxyConfig {
   responseInterceptor: ResponseInterceptorFn | undefined;
 
   getCertSocketTimeout: number;
-  middlewares: string[];
 
-  externalProxy: string | ExternalProxyFn | undefined;
+  externalProxy: ExternalProxyConfig | ExternalProxyFn | undefined;
 
   caCertPath: string;
   caKeyPath: string;

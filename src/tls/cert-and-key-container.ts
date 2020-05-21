@@ -1,5 +1,6 @@
 import * as http from 'http';
-import https from 'https';
+import * as https from 'https';
+import { PeerCertificate, TLSSocket } from 'tls';
 import TlsUtils from './tls-utils';
 import { CaPair } from '../types/ca-pair';
 import { CertPromise } from '../types/cert-promise';
@@ -73,10 +74,9 @@ export default class CertAndKeyContainer {
         },
         (preRes: http.IncomingMessage) => {
           try {
-            // @ts-ignore
-            const realCert = preRes.socket.getPeerCertificate();
+            const realCert: PeerCertificate = (preRes.socket as TLSSocket).getPeerCertificate();
 
-            if (realCert)
+            if (realCert && 'subject' in realCert)
               try {
                 certObj = TlsUtils.createFakeCertificateByCA(this.caPair, realCert);
               } catch (error) {

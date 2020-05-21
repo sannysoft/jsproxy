@@ -1,4 +1,5 @@
 import * as util from 'util';
+import * as colors from 'colors';
 
 const debug = util.debuglog('jsproxy');
 
@@ -21,7 +22,11 @@ export function log(message: string, colorFn?: colorFn): void {
 
 export function logError(message: string | Error): void {
   if (loggerEnabled) {
-    console.error(message);
+    if (message instanceof Error) {
+      console.error(message);
+    } else {
+      log(message, colors.red);
+    }
   } else {
     debug(`Error: ${message}`);
   }

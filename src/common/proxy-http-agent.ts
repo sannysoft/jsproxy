@@ -1,7 +1,6 @@
-// @ts-ignore
-import * as AgentOrigin from 'agentkeepalive';
+import * as AgentKeepAlive from 'agentkeepalive';
 
-export class ProxyHttpAgent extends AgentOrigin {
+export class ProxyHttpAgent extends AgentKeepAlive {
   // TODO
   // public getName(options: any): string {
   //   let name = super.getName(options);
