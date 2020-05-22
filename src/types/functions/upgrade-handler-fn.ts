@@ -3,7 +3,7 @@ import stream from 'stream';
 
 export type UpgradeHandlerFn = (
   req: IncomingMessage,
-  cltSocket: stream.Duplex,
+  clientSocket: stream.Duplex,
   head: Buffer,
   ssl: boolean,
 ) => void;

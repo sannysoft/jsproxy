@@ -32,7 +32,7 @@ export class CommonUtils {
   public static getOptionsFromRequest(
     req: http.IncomingMessage,
     ssl: boolean,
-    externalProxy: ExternalProxyConfig | ExternalProxyFn | undefined,
+    externalProxy: ExternalProxyConfig | ExternalProxyFn | null,
   ): RequestOptions {
     const urlObject = url.parse(req?.url ?? makeErr('No URL specified'));
     const defaultPort = ssl ? 443 : 80;
@@ -100,11 +100,11 @@ export class CommonUtils {
   }
 
   private static getExternalProxyHelper(
-    externalProxy: ExternalProxyConfig | ExternalProxyFn | undefined,
+    externalProxy: ExternalProxyConfig | ExternalProxyFn | null,
     req: http.IncomingMessage,
     ssl: boolean,
   ): ExternalProxyHelper | undefined {
-    let externalProxyConfig: ExternalProxyConfig | undefined;
+    let externalProxyConfig: ExternalProxyConfig | null = null;
 
     if (externalProxy) {
       if (typeof externalProxy === 'string') {

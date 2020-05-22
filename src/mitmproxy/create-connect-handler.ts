@@ -14,22 +14,23 @@ import { logError } from '../common/logger';
 const localIP = '127.0.0.1';
 
 export function createConnectHandler(
-  sslConnectInterceptor: SslConnectInterceptorFn | undefined,
+  sslConnectInterceptor: SslConnectInterceptorFn | boolean | undefined,
   fakeServerCenter: FakeServersCenter,
 ): ConnectHandlerFn {
   // return
-  return function connectHandler(req: IncomingMessage, cltSocket: stream.Duplex, head: Buffer) {
+  return function connectHandler(req: IncomingMessage, clientSocket: stream.Duplex, head: Buffer) {
     const srvUrl = url.parse(`https://${req.url}`);
 
     const interceptSsl =
-      typeof sslConnectInterceptor === 'function' &&
-      sslConnectInterceptor.call(null, req, cltSocket, head);
+      (typeof sslConnectInterceptor === 'function' &&
+        sslConnectInterceptor.call(null, req, clientSocket, head)) ||
+      sslConnectInterceptor === true;
 
     const serverHostname = srvUrl.hostname ?? makeErr('No hostname set for https request');
     const serverPort = Number(srvUrl.port || 443);
 
     if (!interceptSsl) {
-      connect(req, cltSocket, head, serverHostname, serverPort);
+      connect(req, clientSocket, head, serverHostname, serverPort);
       return;
     }
 
@@ -40,7 +41,7 @@ export function createConnectHandler(
           serverPort,
         );
 
-        connect(req, cltSocket, head, localIP, serverObject.port);
+        connect(req, clientSocket, head, localIP, serverObject.port);
       } catch (error) {
         logError(error);
       }
@@ -50,21 +51,21 @@ export function createConnectHandler(
 
 function connect(
   req: IncomingMessage,
-  cltSocket: stream.Duplex,
+  clientSocket: stream.Duplex,
   head: Buffer,
   hostname: string,
   port: number,
 ): ExtendedNetSocket {
   // tunneling https
   const proxySocket: ExtendedNetSocket = net.connect(port, hostname, () => {
-    cltSocket.write('HTTP/1.1 200 Connection Established\r\n\r\n');
+    clientSocket.write('HTTP/1.1 200 Connection Established\r\n\r\n');
     proxySocket.write(head);
-    proxySocket.pipe(cltSocket);
-    cltSocket.pipe(proxySocket);
+    proxySocket.pipe(clientSocket);
+    clientSocket.pipe(proxySocket);
   });
 
   proxySocket.on('error', (e: Error) => {
-    logError(e.message);
+    logError(e);
   });
 
   proxySocket.on('ready', () => {

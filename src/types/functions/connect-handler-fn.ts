@@ -3,6 +3,6 @@ import stream from 'stream';
 
 export type ConnectHandlerFn = (
   req: IncomingMessage,
-  cltSocket: stream.Duplex,
+  clientSocket: stream.Duplex,
   head: Buffer,
 ) => void;

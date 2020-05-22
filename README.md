@@ -48,3 +48,7 @@ proxy.stop()
  - Optional external proxy
  - Written in TypeScript
  
+ ### Examples
+ 
+ Multiple example files are available in /examples folder
+ 

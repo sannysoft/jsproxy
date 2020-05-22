@@ -19,13 +19,16 @@ describe('Proxy test', () => {
       .log(true)
       .sslConnectInterceptor(() => true)
       .requestInterceptor((rOptions, clientReq, clientRes, ssl, next) => {
-        console.log(`URL requested：${rOptions.protocol}//${rOptions.hostname}:${rOptions.port}`);
-        console.log('cookie:', rOptions.headers.cookie);
-        clientRes.setHeader('Content-Type', 'application/json');
-        clientRes.end('Hello jsproxy!');
+        clientReq.setTimeout(1);
+        // console.log(`URL requested：${rOptions.protocol}//${rOptions.hostname}:${rOptions.port}`);
+        // console.log('cookie:', rOptions.headers.cookie);
+        // clientRes.setHeader('Content-Type', 'application/json');
+        // clientRes.end('Hello jsproxy!');
         next();
       })
-      .responseInterceptor((req, res, proxyReq, proxyRes, ssl, next) => {
+      .responseInterceptor((clientReq, clientRes, proxyReq, proxyRes, ssl, next) => {
+        // eslint-disable-next-line no-param-reassign
+        proxyRes.headers['test_header'] = 'test';
         next();
       })
       .externalProxy('http://127.0.0.1:8888');

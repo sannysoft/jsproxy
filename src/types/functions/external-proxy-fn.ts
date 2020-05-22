@@ -1,4 +1,7 @@
 import { IncomingMessage } from 'http';
-import { ExternalProxyConfig } from '../external-proxy-config';
+import { ExternalProxyConfigOrNull } from '../external-proxy-config';
 
-export type ExternalProxyFn = (req: IncomingMessage, ssl: boolean) => ExternalProxyConfig;
+export type ExternalProxyFn = (
+  clientReq: IncomingMessage,
+  ssl: boolean,
+) => ExternalProxyConfigOrNull;

@@ -8,12 +8,18 @@ import { createFakeServerCenter } from './mitmproxy/create-fake-server-center';
 import { createConnectHandler } from './mitmproxy/create-connect-handler';
 import { createRequestHandler } from './mitmproxy/create-request-handler';
 import { caConfig } from './common/ca-config';
-import { log, logError, setLoggerEnabled } from './common/logger';
+import { log, logError, setErrorLoggerConfig, setLoggerConfig } from './common/logger';
 import { makeErr } from './common/common-utils';
 import { SslConnectInterceptorFn } from './types/functions/ssl-connect-interceptor';
 import { RequestInterceptorFn } from './types/functions/request-interceptor-fn';
 import { ResponseInterceptorFn } from './types/functions/response-interceptor-fn';
 import { ExternalProxyFn } from './types/functions/external-proxy-fn';
+import { LoggingFn } from './types/functions/log-fn';
+import { RequestHandlerFn } from './types/functions/request-handler-fn';
+import { UpgradeHandlerFn } from './types/functions/upgrade-handler-fn';
+import { ConnectHandlerFn } from './types/functions/connect-handler-fn';
+import { FakeServersCenter } from './tls/fake-servers-center';
+import { ErrorLoggingFn } from './types/functions/error-logging-fn';
 
 // eslint-disable-next-line import/no-default-export
 export default class JsProxy {
@@ -21,11 +27,17 @@ export default class JsProxy {
 
   private server: http.Server;
 
+  private requestHandler?: RequestHandlerFn;
+
+  private upgradeHandler?: UpgradeHandlerFn;
+
+  private fakeServersCenter?: FakeServersCenter;
+
+  private connectHandler?: ConnectHandlerFn;
+
   public constructor(userProxyConfig: UserProxyConfig = {}) {
     this.proxyConfig = JsProxy.setDefaultsForConfig(userProxyConfig);
     this.server = new http.Server();
-
-    setLoggerEnabled(this.proxyConfig.log);
   }
 
   public port(port: number): JsProxy {
@@ -33,7 +45,7 @@ export default class JsProxy {
     return this;
   }
 
-  public sslConnectInterceptor(value: SslConnectInterceptorFn): JsProxy {
+  public sslConnectInterceptor(value: SslConnectInterceptorFn | boolean): JsProxy {
     this.proxyConfig.sslConnectInterceptor = value;
     return this;
   }
@@ -48,8 +60,13 @@ export default class JsProxy {
     return this;
   }
 
-  public log(value: boolean): JsProxy {
+  public log(value: boolean | LoggingFn): JsProxy {
     this.proxyConfig.log = value;
+    return this;
+  }
+
+  public errorLog(value: boolean | ErrorLoggingFn): JsProxy {
+    this.proxyConfig.errorLog = value;
     return this;
   }
 
@@ -59,7 +76,7 @@ export default class JsProxy {
     return this;
   }
 
-  public externalProxy(value: string | ExternalProxyFn | undefined): JsProxy {
+  public externalProxy(value: string | ExternalProxyFn): JsProxy {
     this.proxyConfig.externalProxy = value;
     return this;
   }
@@ -80,39 +97,51 @@ export default class JsProxy {
 
     return {
       port: userConfig.port || 6789,
+
       log: userConfig.log || true,
+      errorLog: userConfig.errorLog || true,
+
       sslConnectInterceptor: userConfig.sslConnectInterceptor || undefined,
       requestInterceptor: userConfig.requestInterceptor || undefined,
       responseInterceptor: userConfig.responseInterceptor || undefined,
 
       getCertSocketTimeout: userConfig.getCertSocketTimeout || 10000,
 
-      externalProxy: userConfig.externalProxy || undefined,
+      externalProxy: userConfig.externalProxy || null,
 
       caCertPath: caCertPath ?? makeErr('No caCertPath'),
       caKeyPath: caKeyPath ?? makeErr('No caKeyPath'),
     };
   }
 
+  public setup(): void {
+    this.proxyConfig = JsProxy.setDefaultsForConfig(this.proxyConfig);
+
+    setLoggerConfig(this.proxyConfig.log);
+    setErrorLoggerConfig(this.proxyConfig.errorLog);
+
+    this.requestHandler = createRequestHandler(this.proxyConfig);
+    this.upgradeHandler = createUpgradeHandler(this.proxyConfig);
+    this.fakeServersCenter = createFakeServerCenter(
+      this.proxyConfig,
+      this.requestHandler,
+      this.upgradeHandler,
+    );
+
+    this.connectHandler = createConnectHandler(
+      this.proxyConfig.sslConnectInterceptor,
+      this.fakeServersCenter,
+    );
+  }
+
   public run(): void {
     // Don't reject unauthorized
     process.env.NODE_TLS_REJECT_UNAUTHORIZED = '0';
 
-    const requestHandler = createRequestHandler(this.proxyConfig);
-    const upgradeHandler = createUpgradeHandler();
-    const fakeServersCenter = createFakeServerCenter(
-      this.proxyConfig,
-      requestHandler,
-      upgradeHandler,
-    );
-
-    const connectHandler = createConnectHandler(
-      this.proxyConfig.sslConnectInterceptor,
-      fakeServersCenter,
-    );
+    this.setup();
 
     this.server.listen(this.proxyConfig.port, () => {
-      log(`jsproxy port: ${this.proxyConfig.port}`, colors.green);
+      log(`jsproxy is listening on port ${this.proxyConfig.port}`, colors.green);
 
       this.server.on('error', (e: Error) => {
         logError(e);
@@ -120,15 +149,15 @@ export default class JsProxy {
 
       this.server.on('request', (req: http.IncomingMessage, res: http.ServerResponse) => {
         const ssl = false;
-        requestHandler(req, res, ssl);
+        this.requestHandler!!(req, res, ssl);
       });
 
       // tunneling for https
       this.server.on(
         'connect',
-        (req: http.IncomingMessage, cltSocket: stream.Duplex, head: Buffer) => {
-          cltSocket.on('error', () => {});
-          connectHandler(req, cltSocket, head);
+        (req: http.IncomingMessage, clientSocket: stream.Duplex, head: Buffer) => {
+          clientSocket.on('error', () => {});
+          this.connectHandler!!(req, clientSocket, head);
         },
       );
 
@@ -137,7 +166,7 @@ export default class JsProxy {
         'upgrade',
         (req: http.IncomingMessage, socket: stream.Duplex, head: Buffer) => {
           const ssl = false;
-          upgradeHandler(req, socket, head, ssl);
+          this.upgradeHandler!!(req, socket, head, ssl);
         },
       );
     });

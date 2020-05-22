@@ -1,18 +1,27 @@
 import * as util from 'util';
 import * as colors from 'colors';
+import { LoggingFn } from '../types/functions/log-fn';
+import { ErrorLoggingFn } from '../types/functions/error-logging-fn';
 
 const debug = util.debuglog('jsproxy');
 
-let loggerEnabled = false;
+let loggerConfig: boolean | LoggingFn = false;
+let errorLoggerConfig: boolean | ErrorLoggingFn = false;
 
 type colorFn = (str: string) => string;
 
-export function setLoggerEnabled(enabled: boolean): void {
-  loggerEnabled = enabled;
+export function setLoggerConfig(value: boolean | LoggingFn): void {
+  loggerConfig = value;
+}
+
+export function setErrorLoggerConfig(value: boolean | ErrorLoggingFn): void {
+  errorLoggerConfig = value;
 }
 
 export function log(message: string, colorFn?: colorFn): void {
-  if (loggerEnabled) {
+  if (typeof loggerConfig === 'function') {
+    loggerConfig(message);
+  } else if (loggerConfig) {
     const formattedMessage = colorFn?.(message) ?? message;
     console.log(formattedMessage);
   } else {
@@ -20,8 +29,10 @@ export function log(message: string, colorFn?: colorFn): void {
   }
 }
 
-export function logError(message: string | Error): void {
-  if (loggerEnabled) {
+export function logError(message: Error): void {
+  if (typeof errorLoggerConfig === 'function') {
+    errorLoggerConfig(message);
+  } else if (loggerConfig) {
     if (message instanceof Error) {
       console.error(message);
     } else {

@@ -40,5 +40,7 @@ module.exports = {
     'prefer-destructuring': 'off',
     'object-shorthand': 'off',
     'no-plusplus': 'off',
+    'dot-notation': 'off',
+    '@typescript-eslint/no-non-null-assertion': 'off',
   },
 };

@@ -3,6 +3,6 @@ import stream from 'stream';
 
 export type SslConnectInterceptorFn = (
   req: http.IncomingMessage,
-  cltSocket: stream.Duplex,
+  clientSocket: stream.Duplex,
   head: Buffer,
 ) => boolean;

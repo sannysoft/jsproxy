@@ -3,11 +3,12 @@ import https from 'https';
 import { UpgradeHandlerFn } from '../types/functions/upgrade-handler-fn';
 import { CommonUtils } from '../common/common-utils';
 import { logError } from '../common/logger';
+import { ProxyConfig } from '../types/proxy-config';
 
 // create connectHandler function
-export function createUpgradeHandler(): UpgradeHandlerFn {
-  return function upgradeHandler(req, cltSocket, head, ssl) {
-    const clientOptions = CommonUtils.getOptionsFromRequest(req, ssl);
+export function createUpgradeHandler(proxyConfig: ProxyConfig): UpgradeHandlerFn {
+  return function upgradeHandler(req, clientSocket, head, ssl) {
+    const clientOptions = CommonUtils.getOptionsFromRequest(req, ssl, proxyConfig.externalProxy);
     const proxyReq = (ssl ? https : http).request(clientOptions);
 
     proxyReq.on('error', error => {
@@ -17,7 +18,7 @@ export function createUpgradeHandler(): UpgradeHandlerFn {
     proxyReq.on('response', res => {
       // if upgrade event isn't going to happen, close the socket
       // @ts-ignore
-      if (!res.upgrade) cltSocket.end();
+      if (!res.upgrade) clientSocket.end();
     });
 
     proxyReq.on('upgrade', (proxyRes, proxySocket, proxyHead) => {
@@ -25,7 +26,7 @@ export function createUpgradeHandler(): UpgradeHandlerFn {
         logError(error);
       });
 
-      cltSocket.on('error', () => {
+      clientSocket.on('error', () => {
         proxySocket.end();
       });
 
@@ -36,7 +37,7 @@ export function createUpgradeHandler(): UpgradeHandlerFn {
 
       if (proxyHead && proxyHead.length > 0) proxySocket.unshift(proxyHead);
 
-      cltSocket.write(
+      clientSocket.write(
         `${Object.keys(proxyRes.headers)
           .reduce(
             (aggregator, key) => {
@@ -57,7 +58,7 @@ export function createUpgradeHandler(): UpgradeHandlerFn {
           .join('\r\n')}\r\n\r\n`,
       );
 
-      proxySocket.pipe(cltSocket).pipe(proxySocket);
+      proxySocket.pipe(clientSocket).pipe(proxySocket);
     });
     proxyReq.end();
   };
