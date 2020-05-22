@@ -1,12 +1,11 @@
 import * as forge from 'node-forge';
 import * as mkdirp from 'mkdirp';
-import * as _ from 'lodash';
 import * as path from 'path';
 import * as fs from 'fs';
+import { PeerCertificate } from 'tls';
 import { CaConfig } from '../types/ca-config';
 import { CaPair } from '../types/ca-pair';
 import { caConfig } from '../common/ca-config';
-import { PeerCertificate } from 'tls';
 
 export default class TlsUtils {
   public static createCA(CN: string): CaPair {
@@ -266,7 +265,7 @@ export default class TlsUtils {
     // @ts-ignore
     const altNames = cert.getExtension('subjectAltName')?.altNames ?? [];
 
-    mappingHostNames = mappingHostNames.concat(_.map(altNames, 'value'));
+    mappingHostNames = mappingHostNames.concat(altNames.map((item: any) => item.value));
 
     return mappingHostNames;
   }
